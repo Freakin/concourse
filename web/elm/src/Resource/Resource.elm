@@ -16,7 +16,6 @@ module Resource.Resource exposing
     )
 
 import Application.Models exposing (Session)
-import Colors
 import Concourse
 import Concourse.BuildStatus
 import Concourse.Pagination
@@ -109,6 +108,7 @@ init flags =
             , checkSetupError = ""
             , lastChecked = Nothing
             , pinnedVersion = NotPinned
+            , pinErrorred = False
             , currentPage = flags.paging
             , versions =
                 { content = []
@@ -396,6 +396,7 @@ handleCallback callback session ( model, effects ) =
                                         }
                                     )
                                 |> Maybe.withDefault NotPinned
+                        , pinErrorred = False
                       }
                     , effects
                         ++ [ SetPinComment
@@ -408,17 +409,17 @@ handleCallback callback session ( model, effects ) =
                     ( model, effects )
 
         VersionPinned (Err _) ->
-            ( { model | pinnedVersion = NotPinned }
+            ( { model | pinnedVersion = NotPinned, pinErrorred = True }
             , effects
             )
 
         VersionUnpinned (Ok ()) ->
-            ( { model | pinnedVersion = NotPinned }
+            ( { model | pinnedVersion = NotPinned, pinErrorred = False }
             , effects ++ [ FetchResource model.resourceIdentifier ]
             )
 
         VersionUnpinned (Err _) ->
-            ( { model | pinnedVersion = Pinned.quitUnpinning model.pinnedVersion }
+            ( { model | pinnedVersion = Pinned.quitUnpinning model.pinnedVersion, pinErrorred = True }
             , effects
             )
 
@@ -911,11 +912,11 @@ body session model =
     Html.div
         (id "body" :: Resource.Styles.body)
     <|
-        (if model.pinnedVersion == NotPinned then
+        (if model.pinnedVersion == NotPinned && model.pinErrorred == False then
             [ checkSection sectionModel ]
 
          else
-            [ pinTools session model ]
+            [ pinTools session model model ]
         )
             ++ [ viewVersionedResources session model ]
 
@@ -1053,20 +1054,6 @@ concourseVersion pinnedVersion =
 
         Switching _ version _ ->
             Just version
-
-
-pinTools :
-    { s | hovered : HoverState.HoverState }
-    -> { b | pinnedVersion : Models.PinnedVersion }
-    -> Html Message
-pinTools session pinnedVersion =
-    let
-        hovered =
-            session.hovered == HoverState.Hovered UnpinButton
-    in
-    Html.div
-        (id "pin-tools" :: Resource.Styles.pinTools)
-        [ pinBar session pinnedVersion ]
 
 
 checkSection :
@@ -1314,6 +1301,23 @@ commentBar { userState, hovered } { resourceIdentifier, pinnedVersion, pinCommen
 
         _ ->
             Html.text ""
+
+
+pinTools :
+    { s | hovered : HoverState.HoverState }
+    -> { b | pinnedVersion : Models.PinnedVersion }
+    -> Model
+    -> Html Message
+pinTools session pinnedVersion model =
+    Html.div
+        (id "pin-tools" :: Resource.Styles.pinTools model.pinErrorred)
+        (if model.pinErrorred then
+            []
+         else
+            [ pinBar session pinnedVersion
+              [ Html.div (commentBar session model) ]
+            ]
+        )
 
 
 pinBar :
