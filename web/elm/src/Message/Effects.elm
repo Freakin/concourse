@@ -25,7 +25,8 @@ import Message.Message
         )
 import Message.Storage
     exposing
-        ( jobsKey
+        ( deleteFromLocalStorage
+        , jobsKey
         , loadFromLocalStorage
         , loadFromSessionStorage
         , pipelinesKey
@@ -174,10 +175,13 @@ type Effect
     | LoadSideBarState
     | SaveCachedJobs (List Concourse.Job)
     | LoadCachedJobs
+    | DeleteCachedJobs
     | SaveCachedPipelines (List Concourse.Pipeline)
     | LoadCachedPipelines
+    | DeleteCachedPipelines
     | SaveCachedTeams (List Concourse.Team)
     | LoadCachedTeams
+    | DeleteCachedTeams
     | GetViewportOf DomID TooltipPolicy
     | GetElement DomID
 
@@ -468,17 +472,26 @@ runEffect effect key csrfToken =
         LoadCachedJobs ->
             loadFromLocalStorage jobsKey
 
+        DeleteCachedJobs ->
+            deleteFromLocalStorage jobsKey
+
         SaveCachedPipelines pipelines ->
             saveToLocalStorage ( pipelinesKey, pipelines |> Json.Encode.list encodePipeline )
 
         LoadCachedPipelines ->
             loadFromLocalStorage pipelinesKey
 
+        DeleteCachedPipelines ->
+            deleteFromLocalStorage pipelinesKey
+
         SaveCachedTeams teams ->
             saveToLocalStorage ( teamsKey, teams |> Json.Encode.list encodeTeam )
 
         LoadCachedTeams ->
             loadFromLocalStorage teamsKey
+
+        DeleteCachedTeams ->
+            deleteFromLocalStorage teamsKey
 
         GetViewportOf domID tooltipPolicy ->
             Browser.Dom.getViewportOf (toHtmlID domID)
